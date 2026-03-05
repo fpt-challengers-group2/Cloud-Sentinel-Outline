@@ -1,6 +1,6 @@
 ---
 layout: default
-title: Cloud-Sentinel Outline 
+title: FPT-CHALLENGERS-GROUP 2 
 ---
 
 # PROJECT OUTLINE: CLOUD-SENTINEL
@@ -61,10 +61,10 @@ Nằm trong khung quản lý của **AWS Step Functions**, đảm bảo tính nh
 2.  **Sifting:** **Agent 1** fetch log thô từ S3 $\rightarrow$ Lọc nhiễu $\rightarrow$ Ghi metadata tinh lọc vào S3.
 3.  **Reasoning (Cache-First):** 
     * **Agent 2, 3, 4** truy xuất dữ liệu tinh lọc từ S3.
-    * Đối chiếu với **DynamoDB (Cache)**: Nếu có sẵn kết quả $\rightarrow$ Bỏ qua bước RAG.
-    * Nếu Cache-miss $\rightarrow$ Truy vấn **Agentic RAG** để lấy tri thức $\rightarrow$ Cập nhật lại Cache.
-4.  **Verification & Reporting:** **Agent 4** tổng hợp kết quả $\rightarrow$ Gửi báo cáo đã xác thực tới **SNS**.
-5.  **Remediation:** Admin phê duyệt $\rightarrow$ **Lambda** thực hiện ngăn chặn sự cố ngay lập tức.
+    * Đối chiếu với **DynamoDB (Cache)**: Nếu có sẵn kết quả → Bỏ qua bước RAG.
+    * Nếu Cache-miss → truy vấn **Agentic RAG** để lấy tri thức → cập nhật lại Cache.
+4.  **Verification & Reporting:** **Agent 4** tổng hợp kết quả → Gửi báo cáo đã xác thực tới **SNS**.
+5.  **Remediation:** Admin phê duyệt → **Lambda** thực hiện ngăn chặn sự cố ngay lập tức.
 
 ## 4. ĐÁNH GIÁ HIỆU QUẢ 
 * **Performance:** Xử lý và đưa ra quyết định phản ứng trong thời gian ngắn.

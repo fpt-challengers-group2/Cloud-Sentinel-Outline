@@ -1,3 +1,8 @@
+---
+layout: default
+title: FPT-CHALLENGERS-GROUP 2 
+---
+
 # PROJECT OUTLINE: CLOUD-SENTINEL
 
 **Multi-tier Security Monitoring and Response System based on Multi-Agent AI Architecture**
@@ -14,6 +19,7 @@
 
 
 ## 2. SYSTEM ARCHITECTURE
+![Cloud-Sentinel-Architecture-Diagram](./Cloud-Sentinel-Architecture-Diagram.png)
 
 The architecture is designed based on a Serverless model, divided into 5 centrally managed functional layers:
 

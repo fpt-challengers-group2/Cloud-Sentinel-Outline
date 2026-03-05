@@ -59,15 +59,15 @@ Housed within the management framework of **AWS Step Functions**, ensuring proce
 
 ## 3. KEY DATA FLOW
 
-1. **Ingestion:** Logs are pushed to S3 $\rightarrow$ EventBridge $\rightarrow$ Triggers Step Functions orchestration.
-2. **Sifting:** Agent 1 fetches raw logs from S3 $\rightarrow$ Filters noise $\rightarrow$ Writes refined metadata to S3.
+1. **Ingestion:** Logs are pushed to S3 -> EventBridge -> Triggers Step Functions orchestration.
+2. **Sifting:** Agent 1 fetches raw logs from S3 -> Filters noise -> Writes refined metadata to S3.
 3. **Reasoning (Cache-First):** 
     * Agent 2, 3, 4 retrieve refined data from S3.
-    * Cross-reference with DynamoDB (Cache): If results are available $\rightarrow$ Bypass the RAG step.
-    * If Cache-miss $\rightarrow$ Query Agentic RAG for knowledge $\rightarrow$ Update the Cache.
+    * Cross-reference with DynamoDB (Cache): If results are available -> Bypass the RAG step.
+    * If Cache-miss -> Query Agentic RAG for knowledge -> Update the Cache.
 
-4. **Verification & Reporting:** Agent 4 consolidates results $\rightarrow$ Sends verified reports to **SNS**.
-5. **Remediation:** Admin approves $\rightarrow$ Lambda performs immediate incident containment.
+4. **Verification & Reporting:** Agent 4 consolidates results -> Sends verified reports to **SNS**.
+5. **Remediation:** Admin approves -> Lambda performs immediate incident containment.
 
 ## 4. IMPACT ASSESSMENT
 

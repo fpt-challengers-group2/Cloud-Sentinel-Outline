@@ -1,3 +1,8 @@
+---
+layout: default
+title: Cloud-Sentinel Outline 
+---
+
 # PROJECT OUTLINE: CLOUD-SENTINEL
 **Hệ thống Giám sát và Phản ứng Bảo mật đa tầng dựa trên kiến trúc Đa tác nhân AI**
 

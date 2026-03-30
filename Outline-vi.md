@@ -4,70 +4,80 @@ title: FPT-CHALLENGERS-GROUP 2
 ---
 
 # PROJECT OUTLINE: CLOUD-SENTINEL
-**Hệ thống Giám sát và Phản ứng Bảo mật đa tầng dựa trên kiến trúc Đa tác nhân AI**
+**Hệ thống Giám sát và Phản ứng Bảo mật tự động đa tầng**
 
 ---
 
 ## 1. TỔNG QUAN DỰ ÁN 
 
-* **Mục tiêu:** Xây dựng hệ thống tự động hóa phát hiện, phân tích và phản ứng với các mối đe dọa bảo mật trên hạ tầng điện toán đám mây bằng cách phối hợp các Agent AI chuyên biệt thông qua mô hình Multi-Agent Orchestration.
-* **Vấn đề giải quyết:** 
-    * Giảm tải áp lực cho đội ngũ SOC.
-    * Hạn chế tối đa báo động giả thông qua kiểm chứng đa tầng.
-    * Rút ngắn thời gian phản ứng với mối đe dọa bằng quy trình phản ứng tự động.
+* **Mục tiêu:** Xây dựng một hệ thống phát hiện, phân tích và phản ứng hoàn toàn tự động đối với các mối đe dọa trên nền tảng đám mây bằng cách kết hợp sức mạnh suy luận của AI (thông qua LLM) và kiến trúc Serverless hiện đại.
+* **Vấn đề giải quyết:** * Chuyển đổi quy trình vận hành bảo mật từ thủ công sang tự động nhằm giảm thiểu gánh nặng cho quản trị viên.
+    * Loại bỏ các báo động giả thông qua quy trình đánh giá chéo giữa các AI Agent.
+    * Cung cấp khả năng phân tích sự cố theo thời gian thực và tự động thực thi các hành động bảo vệ sau khi có sự kiểm duyệt của chuyên viên.
 
-## 2. KIẾN TRÚC HỆ THỐNG 
+---
 
-![Cloud-Sentinel-Architecture-Diagram](./Cloud-Sentinel-Architecture-Diagram.png)
+## 2. KIẾN TRÚC HỆ THỐNG
 
-Kiến trúc được thiết kế theo mô hình Serverless, chia thành 5 lớp chức năng chính được quản lý tập trung:
+![Cloud-Sentinel-Architecture-Diagram](./Cloud-Sentinel-Architecture-Diagram-ver3.gif)
 
-### 2.1. Lớp dữ liệu nguồn & Kích hoạt (Source Logs + Event & Activation Layer)
-* **Data Sources:** 
-    * **AWS CloudTrail:** Ghi lại toàn bộ lịch sử hoạt động API của tài khoản.
-    * **VPC Flow Logs:** Giám sát lưu lượng IP đi qua các giao diện mạng trong VPC.
-* **Cơ chế kích hoạt:** 
-    * **Native API Integration:** CloudTrail tích hợp trực tiếp với EventBridge để phản ứng theo thời gian thực với các hành vi thay đổi cấu hình trái phép.
-    * **S3 Event Notification:** Kích hoạt luồng phân tích khi các tệp log lớn được đẩy vào S3 Bucket.
+Hệ thống được thiết kế hoàn toàn trên nền tảng AWS và triển khai tại khu vực Asia Pacific (Singapore). Kiến trúc được chia thành 5 lớp chuyên biệt theo dòng chảy của sơ đồ:
+
+### 2.1. Lớp Nguồn dữ liệu & Sự kiện (Source Logs + Events and Activation Layer)
+* **VPC Flow Logs:** Đóng vai trò là nguồn dữ liệu hạ tầng, thu thập toàn bộ nhật ký lưu lượng mạng.
+* **Amazon GuardDuty:** Phân tích trực tiếp dữ liệu từ EC2 VPC Flow Logs. Quá trình này bắt đầu bằng việc đẩy dữ liệu log vào hệ thống (Bước 1: Push logs).
+* **Amazon EventBridge:** Đóng vai trò làm cầu nối kích hoạt (Bước 2: Trigger). Dịch vụ này xử lý dữ liệu với kích thước payload ước tính là 2 KB để khởi chạy quy trình phân tích.
 
 ### 2.2. Lớp Điều phối (Orchestrator Layer)
-Nằm trong khung quản lý của **AWS Step Functions**, đảm bảo tính nhất quán và khả năng phục hồi của quy trình.
+Lớp điều phối được vận hành bởi **AWS Step Functions**, quản lý chuỗi hành động của các Agent. Cấu hình hệ thống ước tính xử lý 100 workflow requests mỗi tháng. Mỗi workflow thực hiện trung bình 40 state transitions.
+* **Supervisor Agent:** Tiếp nhận yêu cầu khởi tạo từ EventBridge (Bước 3: Activate) và đóng vai trò như bộ não điều phối các hành động tiếp theo.
+* **Precedent Check (DynamoDB):** Supervisor Agent truy vấn dữ liệu từ DynamoDB (Bước 3.1) để kiểm tra xem dấu hiệu bất thường đã có tiền lệ giải quyết hay chưa, giúp tối ưu hóa thời gian và chi phí xử lý.
+* **RAG Lambda:** Nếu cần thêm tri thức để phân tích, Supervisor Agent kích hoạt AWS Lambda (Bước 3.2A). Dịch vụ Lambda được phân bổ 512 MB bộ nhớ ephemeral và chạy trên kiến trúc x86.
+* **Advisor Agent:** Sau khi có đủ thông tin ngữ cảnh, Supervisor Agent kích hoạt Advisor Agent (Bước 3.2B) để tổng hợp tình hình và đưa ra khuyến nghị. Sức mạnh phân tích của các Agent được hỗ trợ bởi Amazon Bedrock.
 
-* **Security Supervisor Agent:** "Bộ não" trung tâm tiếp nhận yêu cầu, lập kế hoạch thực thi và điều phối 4 tác tử chuyên gia:
-* **Agent 1 (The Sifter Agent):** Truy xuất log thô từ S3, thực hiện sàng lọc và ghi lại "Dữ liệu tinh lọc" (Refined Data) trở lại S3 nhằm tối ưu chi phí Token cho các bước sau.
-* **Agent 2 (The Profiler Agent):** Đọc dữ liệu tinh lọc, đối chiếu hành vi với khung tấn công **MITRE ATT&CK** để định danh loại hình đe dọa.
-* **Agent 3 (The Advisor Agent):** Tham chiếu các Best Practices (NIST, CIS) để đề xuất kịch bản khắc phục (Remediation) phù hợp.
-* **Agent 4 (The Validator Agent):** Thực hiện kiểm chứng chéo cuối cùng, đảm bảo tính xác thực của thông tin trước khi phát báo động.
-
-### 2.3. Lớp Tri thức & Quản trị  (Data & RAG + Governance & State Layer)
-* **Agentic RAG Layer:** Kết hợp Amazon S3 (Data Storage) và OpenSearch (Vector Database) để cung cấp tri thức chuyên sâu và ngữ cảnh thực tế cho các Agent trong quá trình suy luận.
-* **Semantic Caching (DynamoDB):** 
-    * Lưu trữ dấu vết tư duy và kết quả phân tích của Agent.
-    * Thực hiện cơ chế **Cache Lookup**: Các agent kiểm tra sự cố tương tự đã có tiền lệ chưa để giảm tải cho RAG và tối ưu chi phí vận hành.
+### 2.3. Lớp Xác thực & Lưu trữ (Verify Layer)
+* **Pinecone:** Hoạt động như một Vector Database phục vụ cho truy vấn dữ liệu của RAG Lambda (Query & Retrieve).
+* **Amazon Cognito:** Quản lý quy trình xác thực quản trị viên trước khi họ được phép đưa ra quyết định. Dịch vụ này được cấu hình để phục vụ 800 người dùng hoạt động hàng tháng (MAU).
 
 ### 2.4. Lớp Phản ứng (Action Layer)
-* **Amazon SNS:** Phát báo động tức thời qua Email, SMS.
-* **Admin Approval Dashboard:** Tích hợp **Amazon Cognito** để xác thực chuyên viên bảo mật, cho phép phê duyệt hoặc từ chối các hành động khắc phục trực tiếp từ Dashboard.
-* **Lambda:** Thực thi lệnh chặn IP, thu hồi quyền truy cập IAM hoặc cô lập tài nguyên bị xâm nhập sau khi có sự xác nhận của con người.
+* **Telegram:** Advisor Agent kích hoạt thông báo (Bước 4: Trigger Notify). Thông báo chứa phân tích chi tiết sẽ được gửi đến quản trị viên qua Telegram (Bước 5: Notify).
+* **Quy trình Phê duyệt (Authenticated User):** Chuyên viên bảo mật đã được xác thực sẽ đưa ra quyết định:
+    * **Approve/Cancel (Bước 6A):** Chấp thuận kịch bản phản ứng, trực tiếp kích hoạt khối **Lambda Trigger** để tiến hành cô lập hoặc sửa lỗi.
+    * **Reject (Bước 6B):** Từ chối đề xuất, chu trình sẽ hoàn trả về để phân tích lại hoặc hủy bỏ.
+* **Lưu vết (Bước 7: Save history logs):** Sau khi hành động được thực thi, Lambda Trigger sẽ lưu lại lịch sử sự cố vào hệ thống cơ sở dữ liệu để làm tiền lệ cho tương lai.
 
-### 2.5. Lớp Giám sát Toàn diện (Comprehensive Monitoring Layer)
-* **Amazon CloudWatch**: Giám sát "sức khỏe" vận hành của toàn bộ hệ thống AI, bao gồm nhật ký thực thi của Lambda, trạng thái Step Functions và độ trễ của API.
+### 2.5. Lớp Giám sát (Monitoring Layer)
+* **Amazon CloudWatch:** Giám sát trạng thái hoạt động tổng thể của toàn bộ kiến trúc. Thiết lập giám sát bao gồm 1 Dashboard, 10 Metrics đo lường tùy chỉnh và 5 Standard Resolution Alarm Metrics.
 
-* **Observability Agent**: Theo dõi hiệu suất của từng Agent, mức tiêu thụ Token và lưu lượng xử lý để đảm bảo hệ thống luôn sẵn sàng và có khả năng kiểm toán.
+---
 
-## 3. LUỒNG DỮ LIỆU CHÍNH
+## 3. LUỒNG DỮ LIỆU CỐT LÕI
 
-1.  **Ingestion:** Logs được đẩy vào S3 -> EventBridge -> Kích hoạt Step Functions điều phối.
-2.  **Sifting:** **Agent 1** fetch log thô từ S3 -> Lọc nhiễu -> Ghi metadata tinh lọc vào S3.
-3.  **Reasoning (Cache-First):** 
-    * **Agent 2, 3, 4** truy xuất dữ liệu tinh lọc từ S3.
-    * Đối chiếu với **DynamoDB (Cache)**: Nếu có sẵn kết quả -> Bỏ qua bước RAG.
-    * Nếu Cache-miss -> truy vấn **Agentic RAG** để lấy tri thức -> cập nhật lại Cache.
-4.  **Verification & Reporting:** **Agent 4** tổng hợp kết quả -> Gửi báo cáo đã xác thực tới **SNS**.
-5.  **Remediation:** Admin phê duyệt -> **Lambda** thực hiện ngăn chặn sự cố ngay lập tức.
+1. **Ingestion & Detection:** Lưu lượng từ **VPC Flow Logs** được gửi đến **GuardDuty**.
+2. **Activation:** Khi có bất thường, **GuardDuty** gửi tín hiệu đến **Event Bridge**, từ đó kích hoạt luồng **Step Functions**.
+3. **Orchestration & Reasoning:**
+    * **Supervisor Agent** tra cứu **DynamoDB** để kiểm tra tiền lệ.
+    * Nếu cần bổ sung kiến thức, truy vấn **RAG Lambda** kết hợp cơ sở dữ liệu vector **Pinecone**.
+    * **Advisor Agent** đề xuất phương án xử lý dựa trên dữ liệu thu thập được.
+4. **Alerting:** Cảnh báo được chuyển qua **Telegram** đến hệ thống của chuyên viên bảo mật.
+5. **Remediation:** Chuyên viên đăng nhập qua **Cognito**, kiểm tra và nhấn nút phê duyệt (Approve) để **Lambda Trigger** thực thi vá lỗi tự động, đồng thời lưu lại log hệ thống.
 
-## 4. ĐÁNH GIÁ HIỆU QUẢ 
-* **Performance:** Xử lý và đưa ra quyết định phản ứng trong thời gian ngắn.
-* **Accuracy:** Giảm thiểu báo động giả nhờ quy trình xác thực đa lớp và tri thức nền tảng từ RAG.
-* **Cost Efficiency:** Tối ưu hóa chi phí LLM nhờ cơ chế **Sifting** và **Semantic Caching**.
-* **Scalability:** Kiến trúc **Serverless** cho phép hệ thống tự động mở rộng theo lưu lượng log, hỗ trợ giám sát đa vùng và đa tài khoản.
+---
+
+## 4. DỰ TOÁN CHI PHÍ VẬN HÀNH
+
+[📄 Xem chi tiết Bảng dự toán chi phí AWS (PDF)](./Estimate_Costs.pdf)
+
+Đây là mức chi phí ước tính được xuất ngày 26/03/2026 cho khu vực triển khai Asia Pacific (Singapore).
+
+* **Tổng chi phí ước tính hàng tháng:** 14.46 USD.
+* **Tổng chi phí ước tính cho 12 tháng:** 173.52 USD.
+
+**Chi tiết các dịch vụ có phí:**
+* **Amazon GuardDuty:** 6.90 USD/tháng cho 6 GB dữ liệu phân tích EC2 VPC Flow Log.
+* **Amazon Bedrock:** 3.78 USD/tháng (On Demand - Standard). Ước tính 600 input tokens và 300 output tokens mỗi yêu cầu.
+* **Amazon CloudWatch:** 3.50 USD/tháng (Bao gồm 1 Dashboard, 10 Metrics, 5 Alarms).
+* **Amazon DynamoDB:** 0.28 USD/tháng (1 GB dữ liệu lưu trữ, kích thước item trung bình 10 KB).
+
+**Các dịch vụ tối ưu ngân sách (0.00 USD/tháng):**
+* Amazon EventBridge, AWS Step Functions, AWS Lambda và Amazon Cognito đều ở mức 0.00 USD/tháng dựa trên cấu hình sử dụng giới hạn của hệ thống.
